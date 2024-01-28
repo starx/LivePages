@@ -1,0 +1,21 @@
+version: "3.8"
+services:
+  mongo-express:
+    environment:
+      - ME_CONFIG_BASICAUTH=false
+  express-be-main:
+    build:
+      target: dev
+    environment:
+      - NODE_ENV=dev
+    volumes:
+      - express-be-main-app-code:/usr/src/app
+  react-fe-main:
+    build:
+      target: dev
+    environment:
+      - WATCHPACK_POLLING=$WATCHPACK_POLLING
+    ports:
+      - $REACT_FE_MAIN_LOCAL_PORT:$REACT_FE_MAIN_DOCKER_PORT
+    volumes:
+      - react-fe-main-app-code:/usr/src/app

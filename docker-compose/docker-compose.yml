@@ -1,0 +1,192 @@
+version: '3.8'
+
+x-logging:
+  &default-logging
+  driver: "json-file"
+  options:
+    max-file: "5"
+    max-size: "10m"
+x-build-args:
+  &default-args
+  USER: $PA_USER
+  UID: $PA_UID
+  GROUP: $PA_GROUP
+  GID: $PA_GID
+services:
+  mongodb:
+    logging: *default-logging
+    image: mongo:$MONGO_VERSION
+    restart: unless-stopped
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=$MONGODB_USER
+      - MONGO_INITDB_ROOT_PASSWORD=$MONGODB_PASSWORD
+      - MONGO_INITDB_DATABASE=$MONGODB_DATABASE
+    ports:
+      - $MONGODB_LOCAL_PORT:$MONGODB_DOCKER_PORT
+    volumes:
+      - db:/data/db
+      - ${PROJECT_PATH}/docker-compose/mongodb/data:/docker-entrypoint-initdb.d:ro
+    networks:
+      - backend
+    profiles:
+      - backend
+
+  mongo-express:
+    image: mongo-express
+    ports:
+      - "$ME_LOCAL_PORT:$ME_DOCKER_PORT"
+    environment:
+      - ME_CONFIG_MONGODB_URL=mongodb://$MONGODB_USER:$MONGODB_PASSWORD@mongodb:$MONGODB_DOCKER_PORT/$MONGODB_DATABASE
+      - ME_CONFIG_MONGODB_ADMINUSERNAME=$MONGODB_USER
+      - ME_CONFIG_MONGODB_ADMINPASSWORD=$MONGODB_PASSWORD
+      - ME_CONFIG_MONGODB_SERVER=mongodb
+    depends_on:
+      - mongodb
+    networks:
+      - backend
+    profiles:
+      - backend
+
+  node:
+    build: 
+      context: ./node
+      args: 
+        <<: *default-args
+        BASE_IMG: node:${NODE_VERSION}
+    profiles:
+      - images
+      
+  express:
+    build: 
+      context: ./express
+      args: 
+        <<: *default-args
+        BASE_IMG: ${COMPOSE_PROJECT_NAME}-node
+    depends_on:
+      - node
+    profiles:
+      - images
+
+  express-be-main:
+    logging: *default-logging
+    env_file:
+      - ${PROJECT_PATH}/docker-compose/.env
+    build:
+      context: ${PROJECT_PATH}
+      dockerfile: ${PROJECT_PATH}/docker-compose/express_be_main/$EXPRESS_BE_PROJECT_DOCKERFILE
+      target: $APP_ENV
+      args:
+        <<: *default-args
+        BASE_IMG: ${COMPOSE_PROJECT_NAME}-express
+        CONFIG_PATH: ../../docker-compose/express_be_main
+        # APP_PATH: ../../express_be_basic
+        APP_PATH: ../../express_be_main
+        APP_ENV: $APP_ENV
+    depends_on:
+      - express
+    environment:
+      - NODE_ENV=$APP_ENV
+      - PORT=$EXPRESS_BE_MAIN_DOCKER_PORT
+      - MONGO_URL=mongodb://$MONGODB_USER:$MONGODB_PASSWORD@mongodb:$MONGODB_DOCKER_PORT/$MONGODB_DATABASE
+    ports:
+      - $EXPRESS_BE_MAIN_LOCAL_PORT:$EXPRESS_BE_MAIN_DOCKER_PORT
+    user: "${PA_UID}:${PA_GID}"
+    restart: unless-stopped
+    working_dir: /usr/src/app
+    networks: 
+      - backend
+    profiles:
+      - backend
+  
+  react-fe-main:
+    logging: *default-logging
+    env_file:
+      - ${PROJECT_PATH}/docker-compose/.env
+    build:
+      context: ${PROJECT_PATH}
+      dockerfile: ${PROJECT_PATH}/docker-compose/react_fe_main/$REACT_FE_PROJECT_DOCKERFILE
+      target: $APP_ENV
+      args:
+        <<: *default-args
+        BASE_IMG: ${COMPOSE_PROJECT_NAME}-node
+        CONFIG_PATH: ../../docker-compose/react_fe_main
+        APP_PATH: ../../react_fe_main
+        APP_ENV: $APP_ENV
+    depends_on:
+      - node
+    environment:
+      - PORT=$REACT_FE_MAIN_DOCKER_PORT
+      - WDS_SOCKET_HOST=localhost
+      - WDS_SOCKET_PORT=$REACT_FE_MAIN_LOCAL_PORT
+      - REACT_APP_EXPRESS_BE_MAIN_FQDN=$EXPRESS_BE_MAIN_FQDN
+    user: "${PA_UID}:${PA_GID}"
+    restart: unless-stopped
+    working_dir: /usr/src/app
+    command: 'app_start.sh'
+    networks:
+      - frontend
+    profiles:
+      - frontend
+    
+  nginx:
+    logging: *default-logging
+    env_file:
+      - ${PROJECT_PATH}/docker-compose/.env
+    # # uncomment the following build argument if want to reuse react-fe-main 
+    # build:
+    #   context: ${PROJECT_PATH}
+    #   dockerfile: ${PROJECT_PATH}/docker-compose/react_fe_main/Dockerfile.build
+    #   target: prod
+    #   args:
+    #     <<: *default-args
+    #     BASE_IMG: ${COMPOSE_PROJECT_NAME}-node
+    #     CONFIG_PATH: ../../docker-compose/react_fe_main
+    #     APP_PATH: ../../react_fe_main
+
+    build:
+    
+      context: ${PROJECT_PATH}
+      dockerfile: ${PROJECT_PATH}/docker-compose/nginx/Dockerfile
+      args:
+        <<: *default-args
+        BASE_IMG: nginx:$NGINX_VERSION
+        CONFIG_PATH: ../../docker-compose/nginx
+
+    ports:
+      - $NGINX_LOCAL_PORT:$NGINX_DOCKER_PORT
+    links:
+      - react-fe-main
+    volumes:
+      - react-fe-main-app-code:/var/www
+    restart: unless-stopped
+    networks:
+      - frontend
+    profiles:
+      - frontend
+
+
+volumes: 
+  db:
+  express-be-main-app-code:
+    driver: local
+    driver_opts:
+        type: none
+        o: bind
+        device: $PROJECT_PATH/express_be_main
+  react-fe-main-app-code:
+    driver: local
+    driver_opts:
+        type: none
+        o: bind
+        device: $PROJECT_PATH/react_fe_main
+  fe-basic-app-code:
+    driver: local
+    driver_opts:
+        type: none
+        o: bind
+        device: $PROJECT_PATH/fe_basic
+
+
+networks:
+  backend:
+  frontend:

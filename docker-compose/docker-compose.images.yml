@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+
+  node:
+    build: 
+      context: ./node
+      args: 
+        <<: *default-args
+        BASE_IMG: ${NODE_BASE_IMG}
+
+  express:
+    build: 
+      context: ./express
+      args: 
+        <<: *default-args
+        BASE_IMG: ${COMPOSE_PROJECT_NAME}-node
+    depends_on:
+      - ${COMPOSE_PROJECT_NAME}-node
+
+  express-be-main:
+    depends_on:
+      - ${COMPOSE_PROJECT_NAME}-express
+  
+  react-fe-main:
+    depends_on:
+      - ${COMPOSE_PROJECT_NAME}-node

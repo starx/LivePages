@@ -1,0 +1,41 @@
+ARG BASE_IMG=node:latest
+FROM $BASE_IMG as base
+
+# Container scripts
+ARG CONFIG_PATH
+COPY ${CONFIG_PATH}/scripts /usr/share/container-scripts
+RUN chmod +x /usr/share/container-scripts/* 
+ENV PATH "$PATH:/usr/share/container-scripts"
+
+# Setting Working Directory
+WORKDIR /usr/src/app
+
+# Expose port
+ENV PORT 3000
+EXPOSE 3000
+
+ARG APP_PATH
+# Copy package.json and package-lock.json (or yarn.lock) into the container
+COPY $APP_PATH/package*.json ./
+
+ENV APP_ENV dev
+# Prepare app (e.g. make dirs, install dependencies)
+RUN "app_prep_${APP_ENV}.sh"
+
+# Copy rest of the code to container
+COPY $APP_PATH .
+
+ENV APP_ENV dev
+CMD [ "app_start_${APP_ENV}.sh" ]
+
+FROM base as dev
+
+FROM base as build
+
+RUN "app_build.sh"
+
+# Serve the application using a lightweight web server
+FROM nginx:alpine as prod
+COPY --from=build /usr/src/app/build /usr/share/nginx/html
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]
