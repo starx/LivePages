@@ -1,0 +1,2 @@
+ARG BASE_IMG=node:latest
+FROM $BASE_IMG

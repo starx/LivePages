@@ -1,0 +1,46 @@
+extends layout
+
+block content
+  h1= title
+  p Welcome to Express
+  div #{message}
+  
+  div
+    h2 Status 
+    div Mongo connected: #{mongo_connected}
+  div
+    h2 Menu
+    nav
+      ul.menu-bar
+        li
+          a(href='/hello-world') Hello world
+        li
+          form(method='POST', action='/greet')
+            label(for='name') Or, Say hello to:
+            input(type='text', id='name', name='name', required)
+            button(type='submit') Go
+        li 
+          a(id='load-users', href='#') Load users from backend via Ajax
+
+
+  div#users-list(style='display:none')
+    h2 Users
+    ul
+  script.
+    document.getElementById('load-users').addEventListener('click', function() {
+      fetch('/users')
+        .then(response => response.json())
+        .then(data => {
+          const usersListEl = document.querySelector('#users-list');
+          const usersList = document.querySelector('#users-list > ul');
+          usersList.innerHTML = ''; // Clear existing list
+          data.forEach(user => {
+            const li = document.createElement('li');
+            li.textContent = `Name: ${user.name}, ID: ${user.id}`;
+            usersList.appendChild(li);
+          });
+          usersListEl.style.display = 'block'
+
+        })
+        .catch(error => console.error('Error:', error));
+    });
