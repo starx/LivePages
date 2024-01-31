@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { connect } from 'react-redux';
 import { fetchUsers } from '../actions/userActions';
+import { Link } from 'react-router-dom';
 
 const UsersList = ({ users, fetchUsers, error }) => {
     const [loading, setLoading] = useState(false);
@@ -25,8 +26,8 @@ const UsersList = ({ users, fetchUsers, error }) => {
         <p>Error: {error}</p>
       ) : (
       <ul>
-        {users.map(user => (
-          <li key={user.id}>{user.name}</li>
+        {users.map(({ id, name }) => (
+          <li key={id}><Link to={`/user/${id}`}>{name}</Link></li>
         ))}
       </ul>
       )}
