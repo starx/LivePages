@@ -11,13 +11,14 @@ module.exports =  (io, socket) => {
   
       console.log('loading');
       ContentService.getUserContentOrCreate(user_id)
-          .then((content) => {
-              console.log('user content found', content)
-              // Send initial content to the client
-              socket.emit('updateContent', content);
-              console.log('emitted')
-
-      });
+        .then((content) => {
+            console.log('user content found', content._id)
+            // Send initial content to the client
+            socket.emit('updateContent', content);
+            console.log('emitted')
+        }).catch((err) => {
+            console.error(err);
+        });
       console.log('loaded ');
   }
 
