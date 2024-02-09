@@ -115,6 +115,8 @@ export default function Editor({ user_id }) {
   // console.log('Editor socket', socket)
   const [editorState, setEditorState] = useState();
   const [socket, setSocket] = useState();
+  const token = localStorage.getItem('token');
+  console.log('retrieved token', { token })
 
   useEffect(() => {
     let newSocket;
@@ -123,8 +125,12 @@ export default function Editor({ user_id }) {
     if (!socket) {
       console.log('socket is not set')
       const express_be_main_fqdn = process.env.REACT_APP_EXPRESS_BE_MAIN_FQDN;
+
       newSocket = io(express_be_main_fqdn, {
-        query: { user_id }
+        query: { 
+          user_id,
+          token,
+        }
       });
       setSocket(newSocket);
       console.log({ newSocket });
@@ -156,7 +162,7 @@ export default function Editor({ user_id }) {
         newSocket.close();
       }
     };
-  }, [user_id]);
+  }, [user_id, token]);
   
 
   return (
