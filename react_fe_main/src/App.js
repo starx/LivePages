@@ -1,6 +1,7 @@
-import React, { useState } from "react"
+import React, { useEffect, useState } from "react"
 import { Provider } from 'react-redux';
 import { Routes, Route, Outlet, Link } from "react-router-dom";
+import axios from 'axios';
 import store from './store';
 import './App.css';
 import NoMatch from "./routes/NoMatch";
@@ -28,8 +29,20 @@ function App() {
 }
 
 function Layout() {
-  
+  const [ loggedIn, setLoggedIn ] = useState(false);
   const express_be_main_fqdn = process.env.REACT_APP_EXPRESS_BE_MAIN_FQDN;
+  
+  const login = async () => {
+    axios.post(`${express_be_main_fqdn}/auth`, { username: 'user1', password: 'abc' })
+    .then(response => {
+      localStorage.setItem('token', response.data.accessToken);
+      setLoggedIn(true)
+    });
+  };
+
+  useEffect(() => {    
+      login();
+  }, [login]);
 
   return (
     <div>
@@ -38,6 +51,9 @@ function Layout() {
         <ul>
           <li>
             <Link to="/">Home</Link>
+          </li>
+          <li>
+            {loggedIn ? 'Logged in' : 'Not logged in' }
           </li>
         </ul>
       </nav>
